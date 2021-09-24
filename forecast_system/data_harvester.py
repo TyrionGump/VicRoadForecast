@@ -17,8 +17,11 @@ import datetime
 import warnings
 
 warnings.filterwarnings('ignore')
+pd.set_option('display.max_columns', None)
+pd.set_option('display.width', None)
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
 
 
 class DataHarvester:
@@ -44,7 +47,7 @@ class DataHarvester:
         self.end_timestamp = None
 
         self.raw_df = None
-        self.link_df_dict = {}
+        self.link_df_dict = None
 
     def get_df_dict(self, link_ids, start_time, end_time):
         """Return data that the delays of links in link_ids during a certain time range.
@@ -61,26 +64,31 @@ class DataHarvester:
         end_time_ms = self.end_timestamp * 1000
         ids_str = ','.join([str(link) for link in link_ids])
 
-        self.pull_data(ids_str, start_time_ms, end_time_ms)
-        self.json_data_to_df()
-        self.separate_df_for_each_link(link_ids)
-        self.fill_missing_value()
+        self.link_df_dict = {}
+        self._pull_data(ids_str, start_time_ms, end_time_ms)
+        self._json_data_to_df()
+        self._separate_df_for_each_link(link_ids)
+        self._fill_missing_value()
         self.logger.info("Returning a dictionary contains data for each link...")
         return self.link_df_dict
 
-    def pull_data(self, ids_str, start_time_ms, end_time_ms):
+    def _pull_data(self, ids_str, start_time_ms, end_time_ms):
         """Pull data from the source database.
 
         :param ids_str: a string of link ids separated by comma
         :param start_time_ms: the timestamp of start time with the unit of milliseconds
         :param end_time_ms: the timestamp of end time with the unit of milliseconds
         """
+        # start_time_ms = 1621123200000  # 2021-05-16 10:00:00
+        # end_time_ms = 1621124400000  # 2021-05-16 10:20:00
         # Downloading raw data from KsqlDB
-        # ksql_query = "SELECT ID, DELAY, STRINGTOTIMESTAMP(INTERVAL_START, 'yyyy-MM-dd HH:mm:ss') AS TIMESTAMP " \
-        #              "FROM DELAY_CONGESTION_TAGGED " \
-        #              "WHERE ID =1558 " \
-        #              "AND ROWTIME >={} " \
-        #              "AND ROWTIME <={} EMIT CHANGES;".format(start_time_ms, end_time_ms)
+        # rows_required = 5
+        # ksql_query = "SELECT ID, DELAY_LIST, ED_LIST " \
+        #              "FROM 24HR_BLOCKS " \
+        #              "WHERE ID = 1558 " \
+        #              "AND WINDOWSTARTTIME >= {} " \
+        #              "AND WINDOENDTIME <={} EMIT CHANGES LIMIT {};".format(start_time_ms, end_time_ms, rows_required)
+
         ksql_query = "SELECT ID, WINDOWSTART, LATEST_ED FROM {} " \
                      "WHERE ID IN({}) " \
                      "AND WINDOWSTART >= {} " \
@@ -89,8 +97,10 @@ class DataHarvester:
         ksql_body = json.dumps({'ksql': ksql_query, 'streamProperties': {}})
         self.response = requests.post(self.query_url, data=ksql_body, verify=self.ca_cert,
                                       cert=(self.client_crt, self.client_key), stream=False)
+        self.logger.info("Raw data from KsqlDB have been downloaded...")
+        # print(self.response.text)
 
-    def json_data_to_df(self):
+    def _json_data_to_df(self):
         """
         Transform the json type to dataframe.
         """
@@ -112,11 +122,11 @@ class DataHarvester:
         self.raw_df = pd.DataFrame(data, columns=columns)
         self.raw_df['WINDOWSTART'] /= 1000
 
-    def separate_df_for_each_link(self, link_ids):
+    def _separate_df_for_each_link(self, link_ids):
         for link_id in link_ids:
             self.link_df_dict[link_id] = self.raw_df.loc[self.raw_df['ID'] == link_id, :]
 
-    def fill_missing_value(self):
+    def _fill_missing_value(self):
         """
         Join original data with the timeline. For the missing ID, we use next valid observation to fill gap. For the
         missing LATEST_ED, we use linear interpolation to fill gap.
@@ -124,12 +134,18 @@ class DataHarvester:
         duration = self.end_timestamp - self.start_timestamp
         interval_num = duration // 30
         timeline = pd.Series([self.start_timestamp + i * 30 for i in range(interval_num)], name='TimeStamp')
-        for k, v in self.link_df_dict.items():
-            v = v.merge(timeline, how='right', left_on='WINDOWSTART', right_on='TimeStamp')
-            v['ID'].fillna(k, inplace=True)
-            v.drop(columns=['WINDOWSTART'], inplace=True)
-            v.interpolate(method='linear', axis=0, inplace=True)
-            v[['ID', 'LATEST_ED']] = v[['ID', 'LATEST_ED']].astype(int)
+        for k in self.link_df_dict.keys():
+            print(self.link_df_dict[k])
+            self.link_df_dict[k] = self.link_df_dict[k].merge(timeline,
+                                                              how='right',
+                                                              left_on='WINDOWSTART',
+                                                              right_on='TimeStamp')
+            print(self.link_df_dict[k])
+            self.link_df_dict[k]['ID'].fillna(k, inplace=True)
+            self.link_df_dict[k].drop(columns=['WINDOWSTART'], inplace=True)
+            self.link_df_dict[k].interpolate(method='linear', axis=0, inplace=True)
+            print(self.link_df_dict[k])
+            self.link_df_dict[k][['ID', 'TimeStamp', 'LATEST_ED']] = self.link_df_dict[k][['ID', 'TimeStamp', 'LATEST_ED']].astype(int)
 
 
 

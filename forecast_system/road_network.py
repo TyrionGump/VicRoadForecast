@@ -17,7 +17,7 @@ import networkx as nx
 import shapely
 
 warnings.filterwarnings('ignore')
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s - %(lineno)d - %(module)s')
 
 
 class RoadNetwork:
@@ -27,7 +27,8 @@ class RoadNetwork:
         self.lga_gdf = gpd.read_file(lga_geo_path)
         self.poi_gdf = gpd.read_file(poi_geo_path)
         self.link_graph = None
-        self.link_neighbours = None
+        self.link_neighbours = {}
+        self.regional_link_ids = {}
 
         if os.path.exists(processed_link_path):
             self.link_gdf = gpd.read_file(processed_link_path)
@@ -37,12 +38,16 @@ class RoadNetwork:
 
         self._init_link_graph()
         self._init_link_neighbours()
+        self._init_regional_link_ids()
 
     def get_link_gdf(self):
         return self.link_gdf
 
     def get_link_neighbours(self):
         return self.link_neighbours
+
+    def get_regional_link_ids(self, region_name='MELBOURNE CITY'):
+        return self.regional_link_ids[region_name]
 
     def count_poi_around_link(self, buffer_distance=400):
         """Count the number of places of interest(POI) surrounding links within a certain distance.
@@ -100,6 +105,7 @@ class RoadNetwork:
                 end_lga = row['vic_lga__2']
         link_row['start_lga'] = start_lga
         link_row['end_lga'] = end_lga
+
         return link_row
 
     def _init_link_graph(self):
@@ -110,7 +116,6 @@ class RoadNetwork:
 
     def _init_link_neighbours(self):
         intersected_links = gpd.sjoin(self.link_gdf, self.link_gdf, how='left', op='intersects')
-        self.link_neighbours = {}
         for idx, row in self.link_gdf.iterrows():
             self.link_neighbours[row['id']] = []
             self.link_neighbours[row['id']] = intersected_links[intersected_links['id_left']
@@ -127,3 +132,11 @@ class RoadNetwork:
             self.link_neighbours[row['id']].extend(intersects_edges_ids)
             self.link_neighbours[row['id']] = list(set(self.link_neighbours[row['id']]))
             self.link_neighbours[row['id']].remove(row['id'])
+
+    def _init_regional_link_ids(self):
+        for idx, row in self.lga_gdf.iterrows():
+            start_or_end_in_region = self.link_gdf[(self.link_gdf['start_lga'] == row['vic_lga__2']) | (self.link_gdf['end_lga'] == row['vic_lga__2'])]
+            start_or_end_in_region = start_or_end_in_region['id'].to_list()
+            self.regional_link_ids[row['vic_lga__2']] = start_or_end_in_region
+
+
