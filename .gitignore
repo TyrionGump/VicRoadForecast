@@ -4,3 +4,4 @@
 /key/client.crt
 /key/client.key
 .idea/*
+*.xml
