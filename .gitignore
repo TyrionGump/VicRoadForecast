@@ -3,3 +3,4 @@
 /key/ca.crt
 /key/client.crt
 /key/client.key
+.idea/*
