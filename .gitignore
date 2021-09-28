@@ -5,3 +5,6 @@
 /key/client.key
 .idea/*
 *.xml
+!/data/
+!/key/
+!/models/

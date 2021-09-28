@@ -38,14 +38,14 @@ class DataProcessor:
     def _create_delay_dataset(self):
         self._aggregate_delays()
         self._rolling_delays()
-        # self._add_neighbours_delays()
-
+        self._add_neighbours_delays()
+        self._add_datetime()
         self._add_hour_of_day()
         self._add_day_of_week()
         self._add_link_features()
         self._drop_id_timestamp()
 
-    def _aggregate_delays(self, minute=5):
+    def _aggregate_delays(self, minute=3):
         self.logger.info("Aggregating delay data based on a {}-minute window...".format(minute))
 
         self.research_min = minute
@@ -98,6 +98,12 @@ class DataProcessor:
                 except KeyError:
                     self.logger.warning('Miss data of link_{}'.format(neighbour_id))
                     continue
+
+    def _add_datetime(self):
+        self.logger.info("Adding datetime each link...")
+        for link_id in self.features_dict:
+            self.features_dict[link_id]['timestamp'] = \
+                self.features_dict[link_id]['TimeStamp'].map(lambda x: datetime.fromtimestamp(x))
 
     def _add_hour_of_day(self):
         self.logger.info("Adding hour of day for each link...")

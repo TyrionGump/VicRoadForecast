@@ -54,25 +54,25 @@ END_TIME = datetime(year=2021, month=9, day=22, hour=10, minute=0, second=0)
 
 road_nx = RoadNetwork(link_geo_path=LINK_GEO_PATH, lga_geo_path=LGA_GEO_PATH,
                       poi_geo_path=POI_GEO_PATH, processed_link_path=LINK_GDF_PATH)
-data_harvester = DataHarvester(ca_cert=CA_CERT, client_crt=CLIENT_CERT, client_key=CLIENT_KEY,
-                               query_url=QUERY_URL, table_name=TABLE_NAME)
+# data_harvester = DataHarvester(ca_cert=CA_CERT, client_crt=CLIENT_CERT, client_key=CLIENT_KEY,
+#                                query_url=QUERY_URL, table_name=TABLE_NAME)
 
 # Initialize network information
 road_nx.count_poi_around_link(buffer_distance=400)
 regional_link_ids = road_nx.get_regional_link_ids(region_name=RESEARCH_REGION)
 link_neighbours = road_nx.get_link_neighbours()
 
-# Pulling data from ksqlDB and store them at local client (Only when you don't have them at local client)
-pulling_link_ids = copy.deepcopy(regional_link_ids)
-for idx in regional_link_ids:
-    pulling_link_ids.extend(link_neighbours[idx])
-pulling_link_ids = list(set(pulling_link_ids))
-
-for i in tqdm(range(60, len(pulling_link_ids), 20)):
-    print(pulling_link_ids[i:i+20])
-    delay_df = data_harvester.get_df_dict(pulling_link_ids[i:i+20], start_time=START_TIME, end_time=END_TIME)
-    for k, df in delay_df.items():
-        df.to_csv('../data/ex_delay_091510-092210/{}.csv'.format(k), index=False)
+# # Pulling data from ksqlDB and store them at local client (Only when you don't have them at local client)
+# pulling_link_ids = copy.deepcopy(regional_link_ids)
+# for idx in regional_link_ids:
+#     pulling_link_ids.extend(link_neighbours[idx])
+# pulling_link_ids = list(set(pulling_link_ids))
+#
+# for i in tqdm(range(60, len(pulling_link_ids), 20)):
+#     print(pulling_link_ids[i:i+20])
+#     delay_df = data_harvester.get_df_dict(pulling_link_ids[i:i+20], start_time=START_TIME, end_time=END_TIME)
+#     for k, df in delay_df.items():
+#         df.to_csv('../data/ex_delay_091510-092210/{}.csv'.format(k), index=False)
 
 # Loading local files
 delay_df_dict = {}
