@@ -14,6 +14,8 @@ import warnings
 
 import geopandas as gpd
 import networkx as nx
+import numpy
+import pandas as pd
 import shapely
 
 warnings.filterwarnings('ignore')
@@ -138,5 +140,16 @@ class RoadNetwork:
             start_or_end_in_region = self.link_gdf[(self.link_gdf['start_lga'] == row['vic_lga__2']) | (self.link_gdf['end_lga'] == row['vic_lga__2'])]
             start_or_end_in_region = start_or_end_in_region['id'].to_list()
             self.regional_link_ids[row['vic_lga__2']] = start_or_end_in_region
+
+    def build_neighbour_graph(self):
+        size = max(self.link_neighbours.keys()) + 1
+        matrix = numpy.zeros(shape=(size, size))
+        for key in self.link_neighbours.keys():
+            for value in self.link_neighbours[key]:
+                matrix[key][value] = 1
+        neighbour_df = pd.DataFrame(data=matrix)
+        neighbour_df.to_csv('../data/neighbour.csv', index=False)
+
+
 
 

@@ -38,7 +38,7 @@ class DataProcessor:
     def _create_delay_dataset(self):
         self._aggregate_delays()
         self._rolling_delays()
-        self._add_neighbours_delays()
+        # self._add_neighbours_delays()
         self._add_datetime()
         self._add_hour_of_day()
         self._add_day_of_week()
@@ -49,7 +49,7 @@ class DataProcessor:
         self.logger.info("Aggregating delay data based on a {}-minute window...".format(minute))
 
         self.research_min = minute
-        for link_id in self._delay_df_dict.keys():
+        for link_id in tqdm(self._delay_df_dict.keys()):
             aggregate_res = []
             for i in range(0, len(self._delay_df_dict[link_id]), minute * 2):
                 row = [link_id, self._delay_df_dict[link_id].loc[i + minute, 'TimeStamp'],
@@ -60,7 +60,7 @@ class DataProcessor:
     def _rolling_delays(self):
         self.logger.info("Creating the dataset based on a {}-interval window...".format(self._window_size))
 
-        for link_id, delay_df in self._delay_df_dict.items():
+        for link_id, delay_df in tqdm(self._delay_df_dict.items()):
             rolled_df = delay_df.rolling(window=self._window_size, center=False)
             rolled_features = []
             rolled_target = []
@@ -91,13 +91,14 @@ class DataProcessor:
         for link_id in tqdm(self.features_dict.keys()):
             flag += 1
             neighbour_ids = self._link_neighbours[link_id]
-            for neighbour_id in neighbour_ids:
-                # Some data are not downloaded
-                try:
-                    self.features_dict[link_id] = pd.concat([self.features_dict[link_id], self._rolled_delay_dict[neighbour_id]], axis=1)
-                except KeyError:
-                    self.logger.warning('Miss data of link_{}'.format(neighbour_id))
-                    continue
+            self.features_dict[link_id]['neighbour_ids'] = neighbour_ids
+            # for neighbour_id in neighbour_ids:
+            #     # Some data are not downloaded
+            #     try:
+            #         self.features_dict[link_id] = pd.concat([self.features_dict[link_id], self._rolled_delay_dict[neighbour_id]], axis=1)
+            #     except KeyError:
+            #         self.logger.warning('Miss data of link_{}'.format(neighbour_id))
+            #         continue
 
     def _add_datetime(self):
         self.logger.info("Adding datetime each link...")
