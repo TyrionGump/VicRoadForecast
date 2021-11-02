@@ -10,21 +10,33 @@
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
-from sklearn.svm import SVR
 import joblib
 from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import mean_squared_error
-from sklearn.metrics import mean_absolute_percentage_error
-import matplotlib.pyplot as plt
-import logging
 import os
-
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s - %(lineno)d - %(module)s')
 
 
 class SeparateModel:
+    """
+
+    This class create a machine learning model for each link. Firstly, it splits the training set into a new
+    training set and a validation set. Then, the training set and the validation set are normalized. Thirdly, the
+    model is trained based on the splitted training set and the whole training set. Finally, use the train models
+    predicts on the validation set and the testing set.
+
+    """
     def __init__(self, training_feature_dict, training_target_dict, testing_feature_dict, testing_target_dict,
                  seed=42, validation_size=0.2, model_type=LinearRegression):
+        """Constructor of the model
+
+        Args:
+            training_feature_dict: A dictionary contains the features of the training set of each link
+            training_target_dict: A dictionary contains the targets of the training set of each link
+            testing_feature_dict: A dictionary contains the features of the testing set of each link
+            testing_target_dict: A dictionary contains the targets of the testing set of each link
+            seed: random seed
+            validation_size: The percentage of the validation set in the original training set
+            model_type: Class of sklearn
+        """
         self.training_feature_dict = training_feature_dict
         self.training_target_dict = training_target_dict
         self.testing_feature_dict = testing_feature_dict
@@ -55,10 +67,17 @@ class SeparateModel:
         self.scalars = {}
         self.models = {}
 
-        self.logger = None
-        self._set_logger()
-
     def train_models(self, save):
+        """ Train models on the training set and validation set
+
+        Firstly, it splits the training set into a new training set and validation set. Secondly, the above datasets
+        are normalized. Thirdly, the models are trained on the new training set and predicts results on the validation
+        set. Then, the whole training set and the testing set are normalized and input into the models.
+
+        Args:
+            save: Boolean flag represents whether saving models and prediction results in the local client.
+
+        """
         self._split_training_validation()
         self._normalize(x_training_set=self.x_training_dict, x_testing_set=self.x_validation_dict)
         self._fit(x_training_set=self.x_training_dict, y_training_set=self.y_training_dict)
@@ -110,14 +129,6 @@ class SeparateModel:
         for link_id in self.link_ids:
             pred[link_id] = self.models[link_id].predict(x_testing_set[link_id])
         return pred
-
-    def _set_logger(self):
-        self.logger = logging.getLogger('forecaster')
-        format_str = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-        self.logger.setLevel(logging.INFO)
-        th = logging.FileHandler(filename='../logs/forecaster.log', mode='w', encoding='utf-8')
-        th.setFormatter(format_str)
-        self.logger.addHandler(th)
 
     def _save_model(self):
         model_name = self.model_type().__str__()[:-2]

@@ -12,11 +12,26 @@ import pandas as pd
 from sklearn.metrics import mean_squared_error
 from sklearn.metrics import mean_absolute_percentage_error
 from sklearn.metrics import mean_absolute_error
-import matplotlib.pyplot as plt
 import os
 
+
 class Evaluator:
+    """
+
+    This class receives the prediction results and the true values of each link. Multiple metrics will be calculated
+    for each link to represent the prediction performance of the model.
+
+    """
     def __init__(self, validation_true, validation_pred, testing_true, testing_pred, model_type):
+        """Constructor of the evaluator
+
+        Args:
+            validation_true: A dictionary contains the true values of the validation set of each link
+            validation_pred: A dictionary contains the prediction results of the validation set of each link
+            testing_true: A dictionary contains the true values of the testing set of each link
+            testing_pred: A dictionary contains the prediction results of the testing set of each link
+            model_type: Class of sklearn
+        """
         self.validation_true = validation_true
         self.validation_pred = validation_pred
         self.testing_true = testing_true
@@ -26,21 +41,15 @@ class Evaluator:
         self.link_ids = validation_pred.keys()
         self.performance_df = {'ID': self.link_ids}
 
-        y_true = testing_true[1374]
-        y_pred = testing_pred[1374]
-
-        plt.title('Linear Regression result for Link 1374 (Derrimut Rd) between 2021-10-14 11:00:00 - 2021-10-15 11:00:00 ', fontsize=8)
-        plt.plot(list(range(len(y_true))), [i[0] for i in y_true.values.tolist()], color='blue', linewidth=0.5,
-                 label='true travel time t + 1')
-        plt.plot(list(range(len(y_pred))), [i[0] for i in y_pred.tolist()], color='red', linewidth=0.5,
-                 label='pred travel time t + 1')
-        plt.ylabel('travel time')
-        plt.xlabel('time window (30s)')
-        plt.legend()
-        plt.show()
-
-
     def evaluate(self, save):
+        """Calculate metrics for the model
+
+        Calculate MSE, MAPE, MAE on the validation set and testing set. Then, store the evaluation results in
+        the local client.
+
+        Args:
+            save: Boolean flag represents whether saving evaluation results in the local client.
+        """
         self.performance_df['Validation_MSE'] = self._cal_mse(self.validation_true, self.validation_pred)
         self.performance_df['Testing_MSE'] = self._cal_mse(self.testing_true, self.testing_pred)
 

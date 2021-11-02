@@ -49,6 +49,7 @@ LGA_GEO_PATH = os.path.join(DATA_ROOT, 'LinkLGAData.geojson')
 POI_GEO_PATH = os.path.join(DATA_ROOT, 'VicPOIData.geojson')
 
 if __name__ == '__main__':
+    # Define the research configuration
     system = ModelBuilder(data_root_path=DATA_ROOT,
                           link_geo_path=LINK_GEO_PATH, lga_geo_path=LGA_GEO_PATH, poi_geo_path=POI_GEO_PATH,
                           link_gdf_path=LINK_GDF_PATH,
@@ -58,10 +59,18 @@ if __name__ == '__main__':
                           testing_start_time=TESTING_START_TIME, testing_end_time=TESTING_END_TIME,
                           region=RESEARCH_REGION)
 
-    # system.request_raw_data(save=True)
-    # system.data_preprocessing(forward_steps=20, backward_steps=10, minute_interval=0.5, save=True)
-    system.load_datasets()
+    # Request data from ksqlDB
+    system.request_raw_data(save=True)
+    # Processing raw data. Check the detailed feature selection from line 103 to line 113 in ModelBuilder.py.
+    system.data_preprocessing(forward_steps=20, backward_steps=10, minute_interval=5, save=True)
+
+    # Load the local pre-processed dateset (Ignore the process of line 63 and line 65)
+    # system.load_datasets()
+
+    # Train model with class from sklearn
     system.train_model_in_sklearn(model_type=LinearRegression, save=True)
+
+    # Evaluate model
     system.evaluate_model(model_type=LinearRegression, save=True)
 
 

@@ -62,7 +62,6 @@ class RoadNetwork:
         self._init_link_graph()  # Create a Graph for the road network
         self._init_link_neighbours()  # Find neighbours for each link
         self._init_regional_link_ids()  # Find links within each LGA
-        self._count_poi_around_link(buffer_distance=400)
 
     def get_link_gdf(self):
         return self.link_gdf
@@ -73,12 +72,13 @@ class RoadNetwork:
     def get_regional_link_ids(self, region_name='MELBOURNE CITY'):
         return self.regional_link_ids[region_name]
 
-    def _count_poi_around_link(self, buffer_distance=400):
+    def poi_density(self, buffer_distances=[400]):
         """Count the number of places of interest(POI) surrounding links within a certain distance.
 
         Create buffer for each link and find count the number of POI within the buffers. The operation
         of spatial join is implemented under the coordinate system Web Mercator Projection inAustralia (EPSG:3857)
-        since the operation is based on the unit of meter instead of degree.
+        since the operation is based on the unit of meter instead of degree. Then, the density of poi equals to
+        the count of POI divided by the length of links.
 
         Args:
             buffer_distance: The distance between the boundaries of buffers and the link.
@@ -86,9 +86,11 @@ class RoadNetwork:
         """
         research_buffer_gdf = self.link_gdf.copy(deep=True)
         research_buffer_gdf = research_buffer_gdf.to_crs(epsg=3857)
-        research_buffer_gdf['geometry'] = self.link_gdf.to_crs(epsg=3857).buffer(distance=buffer_distance)
-        buffer_stats = gpd.sjoin(research_buffer_gdf, self.poi_gdf.to_crs(epsg=3857), how='left', op='contains')
-        self.link_gdf['poi_num_{}m'.format(buffer_distance)] = list(buffer_stats.groupby('id').size())
+        for d in buffer_distances:
+            research_buffer_gdf['geometry'] = self.link_gdf.to_crs(epsg=3857).buffer(distance=d)
+            buffer_stats = gpd.sjoin(research_buffer_gdf, self.poi_gdf.to_crs(epsg=3857), how='left', op='contains')
+            self.link_gdf['poi_density_{}m'.format(d)] = list(buffer_stats.groupby('id').size())
+            self.link_gdf['poi_density_{}m'.format(d)] /= self.link_gdf['length']
 
     def _filter_info_for_link(self):
         """Filter useful information from the raw geojson file of link.

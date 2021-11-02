@@ -10,12 +10,10 @@
 """
 
 import json
-import ijson
 import logging
 import os
 import time
 import warnings
-from tqdm import tqdm
 from itertools import chain
 from datetime import datetime
 
@@ -70,7 +68,7 @@ class DataHarvester:
         self.logger = None
         self._set_logger()
 
-    def get_df_dict(self, link_ids, start_time, end_time, raw=False):
+    def get_df_dict(self, link_ids, start_time, end_time):
         """Get data that the delays of links in link_ids during a certain time duration.
 
         According to the required link id and time duration, request data from ksqlDB. Then, separate the

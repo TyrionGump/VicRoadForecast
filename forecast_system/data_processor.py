@@ -14,8 +14,6 @@ import os
 import numpy as np
 import pandas as pd
 from datetime import datetime
-from operator import itemgetter
-from tqdm import tqdm
 from road_network import RoadNetwork
 import logging
 
@@ -38,7 +36,7 @@ class DataProcessor:
         The inputs are the data which will be integrated in the following steps.
 
         Args:
-            delay_df_dict: a dictionary containing link id and the responding data
+            link_df_dict: a dictionary containing link id and the responding data
             road_network: an object of road network
         """
         self._link_df_dict = link_df_dict
@@ -58,17 +56,16 @@ class DataProcessor:
         self._set_logger()
 
     def get_dataset(self):
+        """Get the processed dataset
+
+        Extract the links within the research region and ignore their neighbours out of the region. Then, return
+        the feature set and the target set.
+
+        Returns: A dictionary contain the feature set and the target set of each link
+
+        """
+        self._filter_regional_data()
         return self.features_dict, self.target_dict
-
-    def filter_regional_data(self):
-        regional_features_dict = {}
-        regional_target_dict = {}
-
-        for link_id in self._region_link_ids:
-            regional_features_dict[link_id] = self.features_dict[link_id]
-            regional_target_dict[link_id] = self.target_dict[link_id]
-        self.features_dict = regional_features_dict
-        self.target_dict = regional_target_dict
 
     def aggregate_time_series(self, minute=5):
         """ Aggregate interval of time series from 30 seconds to m minutes
@@ -87,12 +84,10 @@ class DataProcessor:
 
         for link_id, link_df in self._link_df_dict.items():
             aggregate_data = []
-            rolled_df = link_df.rolling(window=self._interval_min * 2, center=False)
-            for series in rolled_df:
-                if len(series) < self._interval_min * 2 or series.index.to_list()[-1] >= link_df.shape[0] - 1:
-                    continue
-                aggregate_data.append(series.mean().to_list())
-
+            t = 0
+            while (t + 1) * minute * 2 < len(link_df):
+                aggregate_data.append(link_df.loc[t * minute * 2: (t + 1) * minute * 2, :].mean().to_list())
+                t += 1
             self._link_df_dict[link_id] = pd.DataFrame(aggregate_data, columns=column_name, dtype='int32')
 
     def rolling_time_series(self, forward_steps=3, backward_steps=1):
@@ -155,7 +150,7 @@ class DataProcessor:
             self.features_dict[link_id] = pd.DataFrame(rolled_features, columns=new_features_columns, dtype='int32')
             self.target_dict[link_id] = pd.DataFrame(rolled_target, columns=new_target_columns, dtype='int32')
 
-    def add_neighbours_data(self, region_name):
+    def add_neighbours_data(self):
         """Add neighbours time series for each link
 
         According to the neighbour information in the road network, horizontally concat these these
@@ -201,22 +196,60 @@ class DataProcessor:
             self.features_dict[link_id]['DayOfWeek'] = \
                 self.features_dict[link_id]['TIMESTAMP'].map(lambda x: datetime.fromtimestamp(x).weekday())
 
-    def add_link_features(self):
+    def add_link_features(self, buffer_distances=[400]):
         """Add geographic feature of each link
 
         Join the table of delay data with the table of geographic data.
 
         """
         self.logger.info("Adding link features for each link...")
+
+        self._road_network.poi_density(buffer_distances)
+
         feature_name = ['id', 'length', 'min_number_of_lanes', 'is_freeway']
+        for d in buffer_distances:
+            feature_name.append('poi_density_{}m'.format(d))
+
         link_df = self._road_network.link_gdf[feature_name]
         for link_id in self._region_link_ids:
             self.features_dict[link_id] = self.features_dict[link_id].merge(link_df, left_on='ID', right_on='id')
+            self.features_dict[link_id].drop(columns=['id'], inplace=True)
+
+    def drop_density(self):
+        """Drop the column of density
+
+        We found that the density in the raw data does not have a strong relationship with travel time. Therefore,
+        We try to drop this column
+
+        """
+        for link_id in self._link_df_dict.keys():
+            self._link_df_dict[link_id].drop(columns=['DENSITY'], inplace=True)
 
     def drop_id_timestamp(self):
+        """Drop the column of ID and TIMESTAMP
+
+        ID and TIMESTAMP do not have to appear in the dataset of machine learning model. Therefore, these two
+        columns are dropped.
+
+        """
         for link_id in self._region_link_ids:
             self.features_dict[link_id].drop(columns=['ID', 'TIMESTAMP'], inplace=True)
             self.target_dict[link_id].drop(columns=['ID', 'TIMESTAMP'], inplace=True)
+
+    def _filter_regional_data(self):
+        """ Extract links within the research region
+
+        Remove the neighbouring links out of the research region
+
+        """
+        regional_features_dict = {}
+        regional_target_dict = {}
+
+        for link_id in self._region_link_ids:
+            regional_features_dict[link_id] = self.features_dict[link_id]
+            regional_target_dict[link_id] = self.target_dict[link_id]
+        self.features_dict = regional_features_dict
+        self.target_dict = regional_target_dict
 
     def _set_logger(self):
         self.logger = logging.getLogger('data_processor')
