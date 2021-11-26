@@ -3,7 +3,7 @@
 *.json
 .idea
 models/
-__pycache__
+**/__pycache__
 *.ipynb
 /forecast_system/nn_library/data/
 /log/
