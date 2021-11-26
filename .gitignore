@@ -1,0 +1,15 @@
+*.csv
+/key/*
+*.json
+/.idea/
+/models/*
+**/__pycache__
+*.ipynb
+/forecast_system/nn_library/data/*
+/log/*
+/data/processed_data/*
+/test_in_notebook/*
+/forecast_system/run_log/*
+.DS_Store
+/run_log
+test.py
