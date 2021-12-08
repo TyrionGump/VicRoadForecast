@@ -1,0 +1,13 @@
+*.csv
+/key
+/.idea
+/result
+**/__pycache__
+*.ipynb
+/test_in_notebook
+/log
+/data/dataset/
+/data/traffic_data/
+*/.DS_Store
+test.py
+*.pyc
