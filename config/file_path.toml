@@ -1,0 +1,12 @@
+[geo_file]
+RAW_LINK_GEO = 'data/geo_data/GeoLinkData.geojson'
+RAW_LGA_GEO = 'data/geo_data/LinkLGAData.geojson'
+RAW_POI_GEO = 'data/geo_data/VicPOIData.geojson'
+PROCESSED_LINK_GEO = 'data/geo_data/link_gdf.geojson'
+
+[traffic_file]
+TRAFFIC_ROOT = 'data/traffic_data'
+
+[log_file]
+DATA_HARVESTER = 'log/data_harvester.log'
+DATASET = 'log/dataset.log'

@@ -1,6 +1,12 @@
-
 *.csv
-/key/ca.crt
-/key/client.crt
-/key/client.key
-/data/raw_data_20000000.json
+/key
+/.idea
+/result
+*/__pycache__
+*.ipynb
+/test_in_notebook
+/log
+/data/dataset/
+/data/traffic_data/
+.DS_Store
+test.py

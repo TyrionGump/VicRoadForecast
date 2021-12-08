@@ -16,9 +16,9 @@ import warnings
 import geopandas as gpd
 import networkx as nx
 import shapely
+from config import args
 
 warnings.filterwarnings('ignore')
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s - %(lineno)d - %(module)s')
 
 
 class RoadNetwork:
@@ -31,7 +31,7 @@ class RoadNetwork:
 
     """
 
-    def __init__(self, link_geo_path, lga_geo_path, poi_geo_path, processed_link_path=""):
+    def __init__(self):
         """Constructor of Class RoadNetwork
 
         The input of the this constructor is four GeoJson file paths of links, LGA, POI and Pre-precessed
@@ -45,19 +45,17 @@ class RoadNetwork:
             processed_link_path: Path to GeoJson file of filtered links
 
         """
-        self.logger = logging.getLogger(__name__)
-        self.link_gdf = None  # Table (GeoDataFrame) of link features
-        self.lga_gdf = gpd.read_file(lga_geo_path)  # Table (GeoDataFrame) of LGA features
-        self.poi_gdf = gpd.read_file(poi_geo_path)  # Table (GeoDataFrame) of POI features
+        if os.path.exists(args.file_config['geo_file']['PROCESSED_LINK_GEO']):
+            self.link_gdf = gpd.read_file(args.file_config['geo_file']['PROCESSED_LINK_GEO'])
+        else:
+            self.link_gdf = gpd.read_file(args.file_config['geo_file']['RAW_LINK_GEO'])
+            self._filter_info_for_link()
+
+        self.lga_gdf = gpd.read_file(args.file_config['geo_file']['RAW_LGA_GEO'])  # Table (GeoDataFrame) of LGA features
+        self.poi_gdf = gpd.read_file(args.file_config['geo_file']['RAW_POI_GEO'])  # Table (GeoDataFrame) of POI features
         self.link_graph = None  # An object of networkx.DiGraph()
         self.link_neighbours = {}  # Links and their neighbours which intersect with them
         self.regional_link_ids = {}  # LGA and link ids within each LGA
-
-        if os.path.exists(processed_link_path):
-            self.link_gdf = gpd.read_file(processed_link_path)
-        else:
-            self.link_gdf = gpd.read_file(link_geo_path)
-            self._filter_info_for_link()
 
         self._init_link_graph()  # Create a Graph for the road network
         self._init_link_neighbours()  # Find neighbours for each link
@@ -72,7 +70,7 @@ class RoadNetwork:
     def get_regional_link_ids(self, region_name='MELBOURNE CITY'):
         return self.regional_link_ids[region_name]
 
-    def poi_density(self, buffer_distances=[400]):
+    def cal_poi_density(self, buffer_distances=[400]):
         """Count the number of places of interest(POI) surrounding links within a certain distance.
 
         Create buffer for each link and find count the number of POI within the buffers. The operation
@@ -120,6 +118,18 @@ class RoadNetwork:
         self.link_gdf = self.link_gdf[['id', 'origin', 'destination', 'minimum_tt', 'length',
                                        'min_number_of_lanes', 'is_freeway', 'start_lga', 'end_lga', 'geometry']]
 
+    def _init_link_graph(self):
+        """Create a graph (A object of networkx.DiGraph()) based on the current road network
+
+        According to the origin id and the destination id of each link, create a graph for this
+        network to provide convenience for the future network analysis.
+
+        """
+        self.link_graph = nx.DiGraph()
+        for idx, row in self.link_gdf.iterrows():
+            edge_attr = row.to_dict()
+            self.link_graph.add_edge(row['origin'], row['destination'], attr=edge_attr)
+
     def _match_link_with_lga(self, link_row):
         """Add LGA information for each link
 
@@ -144,18 +154,6 @@ class RoadNetwork:
         link_row['end_lga'] = end_lga
 
         return link_row
-
-    def _init_link_graph(self):
-        """Create a graph (A object of networkx.DiGraph()) based on the current road network
-
-        According to the origin id and the destination id of each link, create a graph for this
-        network to provide convenience for the future network analysis.
-
-        """
-        self.link_graph = nx.DiGraph()
-        for idx, row in self.link_gdf.iterrows():
-            edge_attr = row.to_dict()
-            self.link_graph.add_edge(row['origin'], row['destination'], attr=edge_attr)
 
     def _init_link_neighbours(self):
         """Find neighbour ids of each link

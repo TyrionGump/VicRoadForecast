@@ -1,0 +1,17 @@
+# This is configuration file for Yubo Sun's local computer
+[db]
+QUERY_URL = 'https://api.dev.unimelb-traffico.cloud.edu.au/query'
+TABLE_NAME = '24HR_TT_DENSITY_V2'
+
+[key]
+CA_CERT = 'key/ca.crt'
+CLIENT_CERT = 'key/client.crt'
+CLIENT_KEY = 'key/client.key'
+
+
+
+
+
+
+
+

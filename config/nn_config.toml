@@ -1,0 +1,26 @@
+[RNN]
+lr = [0.001]
+EPOCH = [150]
+BATCH_SIZE = [16]
+NUM_LAYERS = [2]
+HIDDEN_SIZE = [8]
+DEVICE = ['cuda']
+
+[LSTM]
+lr = [0.001]
+EPOCH = [100]
+BATCH_SIZE = [32]
+NUM_LAYERS = [2]
+HIDDEN_SIZE = [32]
+DEVICE = ['cuda']
+
+[Seq2Seq]
+lr = [0.001]
+EPOCH = [100]
+BATCH_SIZE = [16]
+NUM_LAYERS = [2]
+HIDDEN_SIZE = [16]
+DEVICE = ['cuda']
+
+
+
